@@ -10,7 +10,9 @@ export function GeometryPreview({ item }: { item: GeometryCatalogItem }) {
     item.params.forEach((d) => { p[d.key] = d.default; });
     return createGeometry(item, p);
   }, [item]);
+  
   if (!geometry) return null;
+  
   return (
     <Canvas camera={{ position: [3, 2, 4], fov: 40 }} dpr={[1, 1]}>
       <ambientLight intensity={0.7} />

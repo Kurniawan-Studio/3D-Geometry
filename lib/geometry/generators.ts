@@ -1,8 +1,67 @@
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three-stdlib';
+import { RoundedBoxGeometry, ConvexGeometry } from 'three-stdlib';
 import type { GeometryCatalogItem } from './types';
 import { edgeToCircumradius } from './math';
 import { starShape, crossShape, lShape, tShape } from './shapes';
+
+function archimedeanVertices(type: string): THREE.Vector3[] {
+  const v: THREE.Vector3[] = [];
+  const signs = [
+    [1, 1, 1], [1, 1, -1], [1, -1, 1], [1, -1, -1],
+    [-1, 1, 1], [-1, 1, -1], [-1, -1, 1], [-1, -1, -1],
+  ];
+
+  if (type === 'cuboctahedron') {
+    const coords: [number, number, number][] = [
+      [0, 1, 1], [0, 1, -1], [0, -1, 1], [0, -1, -1],
+      [1, 0, 1], [1, 0, -1], [-1, 0, 1], [-1, 0, -1],
+      [1, 1, 0], [1, -1, 0], [-1, 1, 0], [-1, -1, 0],
+    ];
+    return coords.map(([x, y, z]) => new THREE.Vector3(x, y, z));
+  }
+
+  if (type === 'truncatedCube') {
+    const c = 1, t = 0.5;
+    for (const [sx, sy, sz] of signs) {
+      v.push(new THREE.Vector3(sx * c, sy * c, sz * (c - t)));
+      v.push(new THREE.Vector3(sx * c, sy * (c - t), sz * c));
+      v.push(new THREE.Vector3(sx * (c - t), sy * c, sz * c));
+    }
+    return v;
+  }
+
+  if (type === 'truncatedOctahedron') {
+    const oct: [number, number, number][] = [
+      [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1],
+    ];
+    const t = 1 / 3;
+    for (const [ax, ay, az] of oct) {
+      for (const [bx, by, bz] of oct) {
+        if (ax + bx === 0 && ay + by === 0 && az + bz === 0) continue;
+        v.push(new THREE.Vector3(ax + (bx - ax) * t, ay + (by - ay) * t, az + (bz - az) * t));
+      }
+    }
+    const unique: THREE.Vector3[] = [];
+    for (const p of v) if (!unique.some((q) => q.distanceTo(p) < 1e-6)) unique.push(p);
+    return unique;
+  }
+
+  if (type === 'truncatedTetrahedron') {
+    const tet: [number, number, number][] = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]];
+    const t = 1 / 3;
+    for (const [ax, ay, az] of tet) {
+      for (const [bx, by, bz] of tet) {
+        if (ax === bx && ay === by && az === bz) continue;
+        v.push(new THREE.Vector3(ax + (bx - ax) * t, ay + (by - ay) * t, az + (bz - az) * t));
+      }
+    }
+    const unique: THREE.Vector3[] = [];
+    for (const p of v) if (!unique.some((q) => q.distanceTo(p) < 1e-6)) unique.push(p);
+    return unique;
+  }
+
+  return v;
+}
 
 export function createGeometry(
   item: GeometryCatalogItem,
@@ -21,6 +80,17 @@ export function createGeometry(
         return new THREE.DodecahedronGeometry(edgeToCircumradius('dodecahedron', p.edge));
       case 'icosahedron':
         return new THREE.IcosahedronGeometry(edgeToCircumradius('icosahedron', p.edge));
+      case 'truncatedCube':
+      case 'cuboctahedron':
+      case 'truncatedOctahedron':
+      case 'truncatedTetrahedron': {
+        const verts = archimedeanVertices(t);
+        if (verts.length < 4) return null;
+        const maxR = Math.max(...verts.map((v) => v.length()));
+        const s = (p.size ?? 1.5) / maxR;
+        verts.forEach((v) => v.multiplyScalar(s));
+        return new ConvexGeometry(verts);
+      }
       case 'prism':
         return new THREE.CylinderGeometry(p.radius, p.radius, p.height, p.sides);
       case 'pyramid':
@@ -64,9 +134,7 @@ export function createGeometry(
         shape.lineTo(w - b, d); shape.lineTo(-w + b, d);
         shape.lineTo(-w, d - b); shape.lineTo(-w, -d + b);
         shape.closePath();
-        return new THREE.ExtrudeGeometry(shape, {
-          depth: p.height, bevelEnabled: false,
-        });
+        return new THREE.ExtrudeGeometry(shape, { depth: p.height, bevelEnabled: false });
       }
       case 'star':
         return new THREE.ExtrudeGeometry(
@@ -93,3 +161,4 @@ export function createGeometry(
     return null;
   }
 }
+        

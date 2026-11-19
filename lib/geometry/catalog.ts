@@ -1,18 +1,28 @@
 import type { GeometryCatalogItem, ParamDefinition } from './types';
-import { regularPolygonArea, regularPolygonPerimeter, regularPolygonApothem, polyhedronMeasures, edgeToCircumradius } from './math';
+import {
+  regularPolygonArea,
+  regularPolygonPerimeter,
+  regularPolygonApothem,
+  polyhedronMeasures,
+} from './math';
 import { createGeometry } from './generators';
-import { computeMeshSurfaceArea, computeMeshVolume, getMeshStats } from './inspector';
-import { shapeMetrics } from './shapes';
-import { starShape, crossShape, lShape, tShape } from './shapes';
+import { computeMeshSurfaceArea, computeMeshVolume } from './inspector';
+import { shapeMetrics, starShape, crossShape, lShape, tShape } from './shapes';
 import * as THREE from 'three';
 
-const P = (key: string, label: string, def: number, min = 0.1, max = 5, step = 0.1, unit = 'u'): ParamDefinition =>
-  ({ key, label, default: def, min, max, step, unit });
+const P = (
+  key: string, label: string, def: number,
+  min = 0.1, max = 5, step = 0.1, unit = 'u'
+): ParamDefinition => ({ key, label, default: def, min, max, step, unit });
 
-const I = (key: string, label: string, def: number, min = 3, max = 16, step = 1, unit = ''): ParamDefinition =>
-  ({ key, label, default: def, min, max, step, unit, integer: true });
+const I = (
+  key: string, label: string, def: number,
+  min = 3, max = 16, step = 1, unit = ''
+): ParamDefinition => ({ key, label, default: def, min, max, step, unit, integer: true });
 
-const side = (n: number) => ({ key: 'sides', label: 'Sides', default: n, min: n, max: n, step: 1, unit: '', integer: true });
+const side = (n: number): ParamDefinition => ({
+  key: 'sides', label: 'Sides', default: n, min: n, max: n, step: 1, unit: '', integer: true,
+});
 
 const meshFallback = (item: GeometryCatalogItem, p: Record<string, number>) => {
   const g = createGeometry(item, p);
@@ -23,7 +33,7 @@ const meshFallback = (item: GeometryCatalogItem, p: Record<string, number>) => {
   ];
 };
 
-const polyItems: GeometryCatalogItem[] = [
+const platonicItems: GeometryCatalogItem[] = [
   ['tetrahedron', 'Tetrahedron', 4, 6, 4],
   ['cube', 'Cube', 8, 12, 6],
   ['octahedron', 'Octahedron', 6, 12, 8],
@@ -49,6 +59,55 @@ const polyItems: GeometryCatalogItem[] = [
   },
 }));
 
+const archimedeanItems: GeometryCatalogItem[] = [
+  {
+    id: 'truncated-cube',
+    name: 'Truncated Cube',
+    category: 'polyhedra',
+    description: 'Cube with corners truncated; 6 octagons + 8 triangles.',
+    geometryType: 'truncatedCube',
+    params: [P('size', 'Bounding radius', 1.5)],
+    educational: 'Archimedean solid. V=24, E=36, F=14. Vertex configuration 3.8.8.',
+    vertexCount: 24, edgeCount: 36, faceCount: 14,
+    calculate: (p) => meshFallback({ geometryType: 'truncatedCube' } as GeometryCatalogItem, p),
+  },
+  {
+    id: 'cuboctahedron',
+    name: 'Cuboctahedron',
+    category: 'polyhedra',
+    description: 'Rectified cube; 8 triangles + 6 squares.',
+    geometryType: 'cuboctahedron',
+    params: [P('size', 'Bounding radius', 1.5)],
+    educational: 'Archimedean solid. V=12, E=24, F=14. Vertex configuration 3.4.3.4.',
+    vertexCount: 12, edgeCount: 24, faceCount: 14,
+    calculate: (p) => meshFallback({ geometryType: 'cuboctahedron' } as GeometryCatalogItem, p),
+  },
+  {
+    id: 'truncated-tetrahedron',
+    name: 'Truncated Tetrahedron',
+    category: 'polyhedra',
+    description: 'Tetrahedron with corners truncated; 4 triangles + 4 hexagons.',
+    geometryType: 'truncatedTetrahedron',
+    params: [P('size', 'Bounding radius', 1.5)],
+    educational: 'Archimedean solid. V=12, E=18, F=8. Vertex configuration 3.6.6.',
+    vertexCount: 12, edgeCount: 18, faceCount: 8,
+    calculate: (p) => meshFallback({ geometryType: 'truncatedTetrahedron' } as GeometryCatalogItem, p),
+  },
+  {
+    id: 'truncated-octahedron',
+    name: 'Truncated Octahedron',
+    category: 'polyhedra',
+    description: 'Octahedron with corners truncated; 6 squares + 8 hexagons.',
+    geometryType: 'truncatedOctahedron',
+    params: [P('size', 'Bounding radius', 1.5)],
+    educational: 'Archimedean solid. V=24, E=36, F=14. Vertex configuration 4.6.6.',
+    vertexCount: 24, edgeCount: 36, faceCount: 14,
+    calculate: (p) => meshFallback({ geometryType: 'truncatedOctahedron' } as GeometryCatalogItem, p),
+  },
+];
+
+const polyItems: GeometryCatalogItem[] = [...platonicItems, ...archimedeanItems];
+
 const prismItems: GeometryCatalogItem[] = [3, 4, 5, 6, 8, 10, 12, 14, 16].map((n) => ({
   id: `prism-${n}`,
   name: `${n}-gonal Prism`,
@@ -61,7 +120,8 @@ const prismItems: GeometryCatalogItem[] = [3, 4, 5, 6, 8, 10, 12, 14, 16].map((n
   edgeCount: 3 * n,
   faceCount: n + 2,
   calculate: (p: Record<string, number>) => {
-    const a = regularPolygonArea(n, p.radius), per = regularPolygonPerimeter(n, p.radius);
+    const a = regularPolygonArea(n, p.radius);
+    const per = regularPolygonPerimeter(n, p.radius);
     return [
       { label: 'Volume', value: a * p.height, unit: 'u³', formula: 'V = A_base × h' },
       { label: 'Surface area', value: 2 * a + per * p.height, unit: 'u²', formula: 'A = 2A_base + P·h' },
@@ -82,7 +142,8 @@ const pyramidItems: GeometryCatalogItem[] = [3, 4, 5, 6, 8, 10, 12, 14, 16].map(
   edgeCount: 2 * n,
   faceCount: n + 1,
   calculate: (p: Record<string, number>) => {
-    const a = regularPolygonArea(n, p.radius), per = regularPolygonPerimeter(n, p.radius);
+    const a = regularPolygonArea(n, p.radius);
+    const per = regularPolygonPerimeter(n, p.radius);
     const ap = regularPolygonApothem(n, p.radius);
     const slant = Math.sqrt(p.height ** 2 + ap ** 2);
     return [
@@ -94,16 +155,16 @@ const pyramidItems: GeometryCatalogItem[] = [3, 4, 5, 6, 8, 10, 12, 14, 16].map(
 }));
 
 const curvedItems: GeometryCatalogItem[] = [
-  { id: 'sphere', name: 'Sphere', geometryType: 'sphere', params: [P('radius', 'Radius', 1.2)], counts: false },
-  { id: 'hemisphere', name: 'Hemisphere', geometryType: 'hemisphere', params: [P('radius', 'Radius', 1.2)], counts: false },
-  { id: 'ellipsoid', name: 'Ellipsoid', geometryType: 'ellipsoid', params: [P('a', 'Semi-axis a', 1.5), P('b', 'Semi-axis b', 1), P('c', 'Semi-axis c', 1)], counts: false },
-  { id: 'cylinder', name: 'Cylinder', geometryType: 'cylinder', params: [P('radius', 'Radius', 1), P('height', 'Height', 2)], counts: false },
-  { id: 'cone', name: 'Cone', geometryType: 'cone', params: [P('radius', 'Radius', 1), P('height', 'Height', 2)], counts: false },
-  { id: 'frustum', name: 'Frustum', geometryType: 'frustum', params: [P('topRadius', 'Top radius', 0.6), P('bottomRadius', 'Bottom radius', 1.2), P('height', 'Height', 2)], counts: false },
-  { id: 'torus', name: 'Torus', geometryType: 'torus', params: [P('radius', 'Major radius', 1.5), P('tube', 'Tube radius', 0.4)], counts: false },
-  { id: 'capsule', name: 'Capsule', geometryType: 'capsule', params: [P('radius', 'Radius', 0.6), P('height', 'Cylinder height', 1.5)], counts: false },
-  { id: 'spherical-cap', name: 'Spherical Cap', geometryType: 'sphericalCap', params: [P('radius', 'Sphere radius', 1.5), P('capHeight', 'Cap height', 0.8)], counts: false },
-  { id: 'hollow-cylinder', name: 'Hollow Cylinder', geometryType: 'hollowCylinder', params: [P('outerRadius', 'Outer radius', 1.2), P('innerRadius', 'Inner radius', 0.7), P('height', 'Height', 2)], counts: false },
+  { id: 'sphere', name: 'Sphere', geometryType: 'sphere', params: [P('radius', 'Radius', 1.2)] },
+  { id: 'hemisphere', name: 'Hemisphere', geometryType: 'hemisphere', params: [P('radius', 'Radius', 1.2)] },
+  { id: 'ellipsoid', name: 'Ellipsoid', geometryType: 'ellipsoid', params: [P('a', 'Semi-axis a', 1.5), P('b', 'Semi-axis b', 1), P('c', 'Semi-axis c', 1)] },
+  { id: 'cylinder', name: 'Cylinder', geometryType: 'cylinder', params: [P('radius', 'Radius', 1), P('height', 'Height', 2)] },
+  { id: 'cone', name: 'Cone', geometryType: 'cone', params: [P('radius', 'Radius', 1), P('height', 'Height', 2)] },
+  { id: 'frustum', name: 'Frustum', geometryType: 'frustum', params: [P('topRadius', 'Top radius', 0.6), P('bottomRadius', 'Bottom radius', 1.2), P('height', 'Height', 2)] },
+  { id: 'torus', name: 'Torus', geometryType: 'torus', params: [P('radius', 'Major radius', 1.5), P('tube', 'Tube radius', 0.4)] },
+  { id: 'capsule', name: 'Capsule', geometryType: 'capsule', params: [P('radius', 'Radius', 0.6), P('height', 'Cylinder height', 1.5)] },
+  { id: 'spherical-cap', name: 'Spherical Cap', geometryType: 'sphericalCap', params: [P('radius', 'Sphere radius', 1.5), P('capHeight', 'Cap height', 0.8)] },
+  { id: 'hollow-cylinder', name: 'Hollow Cylinder', geometryType: 'hollowCylinder', params: [P('outerRadius', 'Outer radius', 1.2), P('innerRadius', 'Inner radius', 0.7), P('height', 'Height', 2)] },
 ].map((c) => ({
   id: c.id,
   name: c.name,
@@ -114,32 +175,36 @@ const curvedItems: GeometryCatalogItem[] = [
   educational: 'Curved solid with smooth surface.',
   calculate: (p: Record<string, number>) => {
     switch (c.geometryType) {
-      case 'sphere': return [
-        { label: 'Volume', value: (4 / 3) * Math.PI * p.radius ** 3, unit: 'u³', formula: 'V = 4/3 πr³' },
-        { label: 'Surface area', value: 4 * Math.PI * p.radius ** 2, unit: 'u²', formula: 'A = 4πr²' },
-        { label: 'Diameter', value: 2 * p.radius, unit: 'u' },
-      ];
-      case 'hemisphere': return [
-        { label: 'Volume', value: (2 / 3) * Math.PI * p.radius ** 3, unit: 'u³' },
-        { label: 'Surface area', value: 3 * Math.PI * p.radius ** 2, unit: 'u²' },
-      ];
-      case 'ellipsoid': {
-        const { a, b, c } = p;
-        const k = 1.6075;
-        const s = 4 * Math.PI * (((a ** k) * (b ** k) + (a ** k) * (c ** k) + (b ** k) * (c ** k)) / 3) ** (1 / k);
+      case 'sphere':
         return [
-          { label: 'Volume', value: (4 / 3) * Math.PI * a * b * c, unit: 'u³' },
+          { label: 'Volume', value: (4 / 3) * Math.PI * p.radius ** 3, unit: 'u³', formula: 'V = 4/3 πr³' },
+          { label: 'Surface area', value: 4 * Math.PI * p.radius ** 2, unit: 'u²', formula: 'A = 4πr²' },
+          { label: 'Diameter', value: 2 * p.radius, unit: 'u' },
+        ];
+      case 'hemisphere':
+        return [
+          { label: 'Volume', value: (2 / 3) * Math.PI * p.radius ** 3, unit: 'u³' },
+          { label: 'Surface area', value: 3 * Math.PI * p.radius ** 2, unit: 'u²' },
+        ];
+      case 'ellipsoid': {
+        const { a, b, c: cc } = p;
+        const k = 1.6075;
+        const s = 4 * Math.PI * (((a ** k) * (b ** k) + (a ** k) * (cc ** k) + (b ** k) * (cc ** k)) / 3) ** (1 / k);
+        return [
+          { label: 'Volume', value: (4 / 3) * Math.PI * a * b * cc, unit: 'u³' },
           { label: 'Surface area', value: s, unit: 'u²', formula: 'Knud Thomsen approximation' },
         ];
       }
-      case 'cylinder': return [
-        { label: 'Volume', value: Math.PI * p.radius ** 2 * p.height, unit: 'u³' },
-        { label: 'Surface area', value: 2 * Math.PI * p.radius * (p.radius + p.height), unit: 'u²' },
-      ];
-      case 'cone': return [
-        { label: 'Volume', value: (Math.PI * p.radius ** 2 * p.height) / 3, unit: 'u³' },
-        { label: 'Surface area', value: Math.PI * p.radius * (p.radius + Math.sqrt(p.radius ** 2 + p.height ** 2)), unit: 'u²' },
-      ];
+      case 'cylinder':
+        return [
+          { label: 'Volume', value: Math.PI * p.radius ** 2 * p.height, unit: 'u³' },
+          { label: 'Surface area', value: 2 * Math.PI * p.radius * (p.radius + p.height), unit: 'u²' },
+        ];
+      case 'cone':
+        return [
+          { label: 'Volume', value: (Math.PI * p.radius ** 2 * p.height) / 3, unit: 'u³' },
+          { label: 'Surface area', value: Math.PI * p.radius * (p.radius + Math.sqrt(p.radius ** 2 + p.height ** 2)), unit: 'u²' },
+        ];
       case 'frustum': {
         const { topRadius: r, bottomRadius: R, height: h } = p;
         const l = Math.sqrt((R - r) ** 2 + h ** 2);
@@ -148,14 +213,16 @@ const curvedItems: GeometryCatalogItem[] = [
           { label: 'Surface area', value: Math.PI * (R ** 2 + r ** 2 + (R + r) * l), unit: 'u²' },
         ];
       }
-      case 'torus': return [
-        { label: 'Volume', value: 2 * Math.PI ** 2 * p.radius * p.tube ** 2, unit: 'u³' },
-        { label: 'Surface area', value: 4 * Math.PI ** 2 * p.radius * p.tube, unit: 'u²' },
-      ];
-      case 'capsule': return [
-        { label: 'Volume', value: Math.PI * p.radius ** 2 * p.height + (4 / 3) * Math.PI * p.radius ** 3, unit: 'u³' },
-        { label: 'Surface area', value: 2 * Math.PI * p.radius * p.height + 4 * Math.PI * p.radius ** 2, unit: 'u²' },
-      ];
+      case 'torus':
+        return [
+          { label: 'Volume', value: 2 * Math.PI ** 2 * p.radius * p.tube ** 2, unit: 'u³' },
+          { label: 'Surface area', value: 4 * Math.PI ** 2 * p.radius * p.tube, unit: 'u²' },
+        ];
+      case 'capsule':
+        return [
+          { label: 'Volume', value: Math.PI * p.radius ** 2 * p.height + (4 / 3) * Math.PI * p.radius ** 3, unit: 'u³' },
+          { label: 'Surface area', value: 2 * Math.PI * p.radius * p.height + 4 * Math.PI * p.radius ** 2, unit: 'u²' },
+        ];
       case 'sphericalCap': {
         const { radius: R, capHeight: h } = p;
         const a = Math.sqrt(h * (2 * R - h));
@@ -171,10 +238,10 @@ const curvedItems: GeometryCatalogItem[] = [
           { label: 'Surface area', value: 2 * Math.PI * h * (R + r) + 2 * Math.PI * (R ** 2 - r ** 2), unit: 'u²' },
         ];
       }
-      default: return [];
+      default:
+        return [];
     }
   },
-  vertexCount: undefined, edgeCount: undefined, faceCount: undefined,
 }));
 
 const extrudedItems: GeometryCatalogItem[] = [
@@ -221,7 +288,8 @@ const modifiedItems: GeometryCatalogItem[] = [
   geometryType: m.type,
   params: m.params,
   educational: 'Modified solid; measurements computed from mesh.',
-  calculate: (p: Record<string, number>) => meshFallback(m as any, p),
+  calculate: (p: Record<string, number>) =>
+    meshFallback({ geometryType: m.type } as GeometryCatalogItem, p),
 }));
 
 export const catalog: GeometryCatalogItem[] = [

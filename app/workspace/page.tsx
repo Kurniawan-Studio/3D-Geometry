@@ -40,21 +40,26 @@ export default function WorkspacePage() {
   };
 
   return (
+    // h-[calc(100vh-4rem)] agar pas di layar mobile, flex-col untuk menumpuk atas-bawah
     <div className="flex h-[calc(100vh-4rem)] flex-col md:h-screen md:flex-row">
-      <div className="relative flex-1">
+      
+      {/* Kanvas 3D: 50% tinggi layar di HP, 100% di Desktop */}
+      <div className="relative h-[50vh] w-full md:h-full md:flex-1">
         <ViewerErrorBoundary>
           <Scene />
         </ViewerErrorBoundary>
         <Toolbar />
       </div>
-      <aside className="w-full overflow-y-auto border-t border-border bg-surface p-4 md:w-96 md:border-l md:border-t-0">
+
+      {/* Inspector: Sisa layar di HP, 400px di Desktop */}
+      <aside className="w-full flex-1 overflow-y-auto border-t border-border bg-surface p-4 md:w-96 md:flex-none md:border-l md:border-t-0">
         {item ? (
           <>
             <Inspector item={item} />
             <ParameterEditor item={item} />
             <button 
               onClick={handleSave} 
-              className="mt-4 w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark transition-colors"
+              className="mt-6 w-full rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark transition-colors"
             >
               Save configuration
             </button>
@@ -63,6 +68,7 @@ export default function WorkspacePage() {
           <p className="text-sm text-ink-muted">Select a geometry.</p>
         )}
       </aside>
+      
     </div>
   );
 }

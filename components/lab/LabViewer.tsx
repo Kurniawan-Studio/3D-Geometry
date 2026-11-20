@@ -2,7 +2,7 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, Center } from '@react-three/drei';
 
 export function LabViewer({ points, depth }: { points: { x: number; y: number }[]; depth: number }) {
   const geometry = useMemo(() => {
@@ -18,8 +18,14 @@ export function LabViewer({ points, depth }: { points: { x: number; y: number }[
       <ambientLight intensity={0.7} />
       <directionalLight position={[5, 10, 7]} intensity={1.2} />
       <gridHelper args={[20, 20]} />
-      {geometry && <mesh geometry={geometry}><meshStandardMaterial color="#059669" roughness={0.5} /></mesh>}
-      <OrbitControls makeDefault />
+      {geometry && (
+        <Center>
+          <mesh geometry={geometry}>
+            <meshStandardMaterial color="#059669" roughness={0.5} />
+          </mesh>
+        </Center>
+      )}
+      <OrbitControls makeDefault target={[0, 0, 0]} />
     </Canvas>
   );
 }
